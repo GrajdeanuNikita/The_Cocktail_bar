@@ -1,3 +1,5 @@
+package com.example.the_cocktail_bar
+
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -9,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -20,6 +23,12 @@ import androidx.navigation.compose.*
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.net.URL
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.painter.Painter
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,8 +76,8 @@ fun BottomNavigationBar(navController: NavHostController) {
 fun NavigationGraph(navController: NavHostController, viewModel: CocktailViewModel) {
     NavHost(navController, startDestination = "home") {
         composable("home") { HomeScreen() }
-        composable("search") { SearchScreen(viewModel) }
-        composable("favorites") { FavoritesScreen(viewModel) }
+        composable("search") { Ricerca(viewModel) }
+        composable("favorites") { Preferiti(viewModel) }
     }
 }
 
@@ -77,10 +86,15 @@ fun HomeScreen() {
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Text(text = "Cocktail Bar 🍸", fontSize = 30.sp, textAlign = TextAlign.Center)
     }
+    Image(
+        painter = painterResource(id = R.drawable.ariana),
+        contentDescription = "immagine cocktail bar"
+    )
+
 }
 
 @Composable
-fun SearchScreen(viewModel: CocktailViewModel) {
+fun Ricerca(viewModel: CocktailViewModel) {
     var searchText by remember { mutableStateOf(TextFieldValue()) }
     val cocktail = viewModel.cocktail
 
@@ -110,7 +124,7 @@ fun SearchScreen(viewModel: CocktailViewModel) {
     }
 }
 @Composable
-fun FavoritesScreen(viewModel: CocktailViewModel) {
+fun Preferiti(viewModel: CocktailViewModel) {
     val favorites = viewModel.favorites.toList() // Convertiamo la lista in una List normale
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
