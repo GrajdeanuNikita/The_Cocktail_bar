@@ -11,7 +11,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -27,12 +26,17 @@ import org.json.JSONObject
 import java.net.URL
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.contentpager.content.Query
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.colorResource
+import androidx.compose.material3.*
+
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -60,6 +64,7 @@ fun MyApp() {
 fun BarraNavigazione(navController: NavHostController) {
     val items = listOf("home", "ricerca", "preferiti")
     val icons = listOf("🏠", "🔍", "⭐")
+    //Icons.Filled.Star oppure Icons.Outlined.Star
 
     NavigationBar(containerColor = Color.LightGray) {
         val currentRoute by navController.currentBackStackEntryAsState()
@@ -88,6 +93,10 @@ fun NavigationGraph(navController: NavHostController, viewModel: CocktailViewMod
 
 @Composable
 fun HomeScreen(navController: NavController) {
+
+    val tertiaryColor = colorResource(id = R.color.md_theme_tertiary_highContrast)
+
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -185,7 +194,12 @@ fun Gioco(navController: NavController) {
             val options = (alcoholOptions + it.alcohol).shuffled().take(4)
             options.forEach { alcohol ->
                 Button(
-                    onClick = { selectedAnswer = alcohol },
+                    onClick = { selectedAnswer = alcohol
+                             checkAnswer(selectedAnswer,cocktail){
+                                 correct, color -> isCorrectAnswer= correct
+                                 feedbackColor= color
+                                 if(correct) score++
+                             } },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(8.dp)
@@ -333,7 +347,7 @@ class CocktailViewModel : androidx.lifecycle.ViewModel() {
                 )
             }
         }
-    }
+    } //usarew retrofit
 
     // Funzione per cercare cocktail per nome e restituire la lista
     fun fetchCocktailsByName(name: String, callback: (List<Cocktail>) -> Unit) {
@@ -406,7 +420,11 @@ suspend fun fetchRandomCocktail(): Cocktail? {
     }
 }
 
-fun checkAnswer(selectedAnswer: String, cocktail: Cocktail?, onFeedbackChange: (Boolean, Color) -> Unit) {
+fun checkAnswer(
+    selectedAnswer: String,
+    cocktail: Cocktail?,
+    onFeedbackChange: (Boolean, Color) -> Unit
+) {
     if (selectedAnswer == cocktail?.alcohol) {
         onFeedbackChange(true, Color.Green)  // Risposta corretta
     } else {
