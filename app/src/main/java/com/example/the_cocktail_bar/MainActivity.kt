@@ -22,20 +22,19 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.json.JSONObject
-import java.net.URL
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.draw.blur
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.colorResource
-import androidx.compose.material3.*
+import androidx.lifecycle.ViewModel
+import com.example.the_cocktail_bar.network.RetrofitClient
+import androidx.compose.ui.text.font.FontWeight
+import coil.compose.rememberImagePainter
+
 
 
 class MainActivity : ComponentActivity() {
@@ -43,6 +42,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             MyApp()
+            //quello vero
         }
     }
 }
@@ -132,7 +132,6 @@ fun HomeScreen(navController: NavController) {
         }
     }
 }
-
 @Composable
 fun Gioco(navController: NavController) {
     var score by remember { mutableStateOf(0) }
@@ -140,78 +139,104 @@ fun Gioco(navController: NavController) {
     var selectedAnswer by remember { mutableStateOf("") }
     var feedbackColor by remember { mutableStateOf(Color.Transparent) }
     var isCorrectAnswer by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
-    // Funzione per ottenere un nuovo cocktail
+    // Carica un cocktail casuale
     LaunchedEffect(true) {
-        cocktail = fetchRandomCocktail()
-        println("Cocktail caricato: ${cocktail?.name}")
+        val response = RetrofitClient.instance.getRandomCocktail()
+        cocktail = response.drink?.first()
     }
+
+    // Lista di alcolici per il gioco
     val alcoholOptions = listOf("Vodka", "Rum", "Gin", "Whiskey", "Tequila", "Brandy", "Cognac", "Gin", "Scotch")
 
-
-    // Dopo un breve delay, cambia la schermata
-        LaunchedEffect(key1 = feedbackColor) {
-            if (feedbackColor != Color.Transparent) {
-                delay(1000)
-                feedbackColor = Color.Transparent
-                cocktail = fetchRandomCocktail()  // Carica un nuovo cocktail
-                selectedAnswer = ""  // Reset della risposta selezionata
-            }
+    // Rimuovi il feedback dopo 1 secondo
+    LaunchedEffect(key1 = feedbackColor) {
+        if (feedbackColor != Color.Transparent) {
+            delay(1000)
+            feedbackColor = Color.Transparent
+            selectedAnswer = ""
         }
+    }
 
+    val changeCocktail = {
+        coroutineScope.launch {
+            val response = RetrofitClient.instance.getRandomCocktail()
+            cocktail = response.drink?.first()
+            feedbackColor = Color.Transparent
+            selectedAnswer = ""
+        }
+    }
+
+    // Box principale che contiene il layout
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black),
-        contentAlignment = Alignment.Center
+            .background(Color.Black)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp), // Padding per evitare che gli elementi tocchino i bordi
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            // Titolo del gioco
             Text(
-                text = "Gioco di Bevute ",
+                text = "Gioco di Bevute",
                 fontSize = 30.sp,
                 color = Color.White,
                 textAlign = TextAlign.Center
             )
-        }
-        Spacer(modifier = Modifier.height(20.dp))
 
-        // Mostra il cocktail
-        cocktail?.let {
-            Text(
-                text = "Cocktail: ${it.name}",
-                fontSize = 24.sp,
-                color = Color.White,
-                textAlign = TextAlign.Center
-            )
+            Spacer(modifier = Modifier.height(40.dp))
 
-            Spacer(modifier = Modifier.height(20.dp))
+            // Quando il cocktail è caricato, mostra l'immagine, nome e le opzioni
+            cocktail?.let {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    // Mostra l'immagine del cocktail
+                    it.imageUrl?.let { url ->
+                        Image(painter = rememberImagePainter(url), contentDescription = null)
+                    }
 
-            // Mostra i bottoni con le risposte
-            val options = (alcoholOptions + it.alcohol).shuffled().take(4)
-            options.forEach { alcohol ->
-                Button(
-                    onClick = { selectedAnswer = alcohol
-                             checkAnswer(selectedAnswer,cocktail){
-                                 correct, color -> isCorrectAnswer= correct
-                                 feedbackColor= color
-                                 if(correct) score++
-                             } },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(8.dp)
-                ) {
-                    Text(text = alcohol, color = Color.White, fontSize = 18.sp)
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Mostra il nome del cocktail
+                    Text(
+                        text = "Cocktail: ${it.name}",
+                        fontSize = 24.sp,
+                        color = Color.White,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Crea le opzioni con ingredienti
+                    val options = (alcoholOptions + it.ingredients.orEmpty()).shuffled().take(5)
+
+                    options.forEach { option ->
+                        Button(
+                            onClick = {
+                                selectedAnswer = option
+                                // Controlla se la risposta è corretta
+                                isCorrectAnswer = it.ingredients?.contains(option) == true
+                                feedbackColor = if (isCorrectAnswer) Color.Green else Color.Red
+                                if (isCorrectAnswer) score++ // Aumenta il punteggio se corretto
+                            },
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .background(feedbackColor)
+                        ) {
+                            Text(option, color = Color.White, fontSize = 18.sp)
+                        }
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Feedback sulla risposta
-             AnimatedVisibility(visible = feedbackColor != Color.Transparent) {
+            // Feedback sulla risposta dell'utente
+            AnimatedVisibility(visible = feedbackColor != Color.Transparent) {
                 Text(
                     text = if (isCorrectAnswer) "Corretto!" else "Sbagliato!",
                     fontSize = 24.sp,
@@ -219,7 +244,7 @@ fun Gioco(navController: NavController) {
                 )
             }
 
-            // Punteggio
+            // Mostra il punteggio attuale
             Text(
                 text = "Punteggio: $score",
                 fontSize = 20.sp,
@@ -228,12 +253,17 @@ fun Gioco(navController: NavController) {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Bottone di conferma
+            // Pulsante per cambiare il cocktail
+            Button(
+                onClick = { changeCocktail() },
+                modifier = Modifier.padding(8.dp)
+            ) {
+                Text("Cambia Cocktail", color = Color.White, fontSize = 18.sp)
+            }
 
+            Spacer(modifier = Modifier.height(30.dp))
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Bottone per tornare indietro
+            // Pulsante "Indietro" per tornare alla schermata precedente
             Button(
                 onClick = { navController.popBackStack() },
             ) {
@@ -247,22 +277,14 @@ fun Gioco(navController: NavController) {
 
 @Composable
 fun Ricerca(viewModel: CocktailViewModel) {
-    var searchText by remember { mutableStateOf(TextFieldValue()) }
-    val cocktail = viewModel.cocktail
-    val favorites = viewModel.favorites.toList()
-    var searchResults: List<Cocktail> = listOf()
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        // Campo di ricerca
+    var searchText by remember { mutableStateOf(TextFieldValue("")) }
+    val searchResults by remember { mutableStateOf(viewModel.cocktailList) }
+
+    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         BasicTextField(
             value = searchText,
             onValueChange = { searchText = it },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp),
+            modifier = Modifier.fillMaxWidth().padding(8.dp),
             decorationBox = { innerTextField ->
                 Box(
                     modifier = Modifier
@@ -274,38 +296,33 @@ fun Ricerca(viewModel: CocktailViewModel) {
                 }
             }
         )
+
         Spacer(modifier = Modifier.height(8.dp))
 
-        Button(onClick = { viewModel.fetchCocktail(searchText.text) }) {
-            Text("Cerca")
+        Button(onClick = { viewModel.trovaCocktail(searchText.text) }) {
+            Text("Cerca ")
         }
 
-        // Mostra i cocktail trovati
         searchResults.forEach { cocktail ->
             Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                Text(text = "Nome: ${cocktail.name}", fontSize = 18.sp)
-                Text(text = "Categoria: ${cocktail.category}", fontSize = 14.sp)
-                Text(text = "Istruzioni: ${cocktail.instructions}", fontSize = 14.sp)
-                Text(text = "Alcol: ${cocktail.alcohol}", fontSize = 14.sp)
+                // Nome del cocktail
+                Text("Nome: ${cocktail.name}", fontSize = 18.sp, fontWeight = FontWeight.Bold)
 
-                Button(onClick = { viewModel.addFavorite(cocktail) }) {
-                    Text("Aggiungi ai Preferiti")
+                // Immagine del cocktail
+                cocktail.imageUrl?.let {
+                    Image(painter = rememberImagePainter(it), contentDescription = "Cocktail Image", modifier = Modifier.fillMaxWidth())
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-        }
 
-        // Sezione dei preferiti
-        Text("Cocktail Preferiti", fontSize = 24.sp, modifier = Modifier.padding(top = 16.dp))
+                // Istruzioni
+                Text("Istruzioni: ${cocktail.instructions}", fontSize = 14.sp)
 
-        favorites.forEach { cocktail ->
-            Text("- ${cocktail.name}", fontSize = 18.sp)
-        }
-    }
-    LaunchedEffect(viewModel.cocktail) {
-        if (searchText.text.isNotEmpty()) {
-            viewModel.fetchCocktailsByName(searchText.text) { results ->
-                searchResults = results
+                // Ingredienti
+                cocktail.ingredients?.forEach { ingredient ->
+                    Text("Ingrediente: $ingredient", fontSize = 14.sp)
+                }
+                Button(onClick = { viewModel.salvaCocktail(cocktail) }) {
+                    Text("Salva nei preferiti")
+                }
             }
         }
     }
@@ -313,121 +330,34 @@ fun Ricerca(viewModel: CocktailViewModel) {
 
 @Composable
 fun Preferiti(viewModel: CocktailViewModel) {
-    val favorites = viewModel.favorites.toList() // Convertiamo la lista in una List normale
-
     Column(modifier = Modifier
         .fillMaxSize()
         .padding(16.dp)) {
         Text("Cocktail Preferiti", fontSize = 24.sp)
-        favorites.forEach { cocktail ->
-            Text("- ${cocktail.name}")
-        }
-    }
-}
-
-class CocktailViewModel : androidx.lifecycle.ViewModel() {
-    var cocktail by mutableStateOf<Cocktail?>(null)
-    var favorites = mutableStateListOf<Cocktail>()
-    private val _cocktailList = mutableStateListOf<Cocktail>()
-    val cocktailList: List<Cocktail> get() = _cocktailList
-
-    // Funzione per cercare cocktail per nome
-    fun fetchCocktail(name: String) {
-        viewModelScope.launch {
-            val response = URL("https://www.thecocktaildb.com/api/json/v1/1/search.php?s=$name").readText()
-            val jsonObject = JSONObject(response)
-            val drinks = jsonObject.getJSONArray("drinks")
-            if (drinks.length() > 0) {
-                val drink = drinks.getJSONObject(0)
-                cocktail = Cocktail(
-                    name = drink.getString("strDrink"),
-                    category = drink.getString("strCategory"),
-                    instructions = drink.getString("strInstructions"),
-                    alcohol = drink.getString("strAlcoholic")
-                )
-            }
-        }
-    } //usarew retrofit
-
-    // Funzione per cercare cocktail per nome e restituire la lista
-    fun fetchCocktailsByName(name: String, callback: (List<Cocktail>) -> Unit) {
-        viewModelScope.launch {
-            try {
-                val response = URL("https://www.thecocktaildb.com/api/json/v1/1/search.php?s=$name").readText()
-                val jsonObject = JSONObject(response)
-                val drinks = jsonObject.optJSONArray("drinks")
-                val cocktails = mutableListOf<Cocktail>()
-                if (drinks != null && drinks.length() > 0) {
-                    for (i in 0 until drinks.length()) {
-                        val drink = drinks.getJSONObject(i)
-                        cocktails.add(
-                            Cocktail(
-                                name = drink.getString("strDrink"),
-                                category = drink.getString("strCategory"),
-                                instructions = drink.getString("strInstructions"),
-                                alcohol = drink.getString("strAlcoholic")
-                            )
-                        )
-                    }
-                }
-                callback(cocktails) // Restituisce la lista dei cocktail
-            } catch (e: Exception) {
-                e.printStackTrace()
-                callback(emptyList()) // Se c'è un errore, restituisce una lista vuota
-            }
-        }
-    }
-
-    // Funzione per aggiungere un cocktail ai preferiti
-    fun addFavorite(cocktail: Cocktail) {
-        favorites.add(cocktail)
-    }
-}
-
-
-//--------GIOCO
-
-data class CocktailResponse(
-    val drinks: List<Cocktail>?
-)
-
-data class Cocktail(
-    val name: String,
-    val category: String,
-    val instructions: String,
-    val alcohol: String
-)
-
-suspend fun fetchRandomCocktail(): Cocktail? {
-    return try {
-        val response = URL("https://www.thecocktaildb.com/api/json/v1/1/random.php").readText()
-        val jsonObject = JSONObject(response)
-        val drinks = jsonObject.optJSONArray("drinks")
-        if (drinks != null && drinks.length() > 0) {
-            val firstDrink = drinks.getJSONObject(0)
-            Cocktail(
-                name = firstDrink.getString("strDrink"),
-                category = firstDrink.getString("strCategory"),
-                instructions = firstDrink.getString("strInstructions"),
-                alcohol = firstDrink.getString("strAlcoholic")
-            )
+        if (viewModel.favorites.isEmpty()) {
+            Text("Nessun cocktail preferito.", fontSize = 18.sp)
         } else {
-            null
+            viewModel.favorites.forEach { cocktail ->
+                Text("- ${cocktail.name}", fontSize = 18.sp)
+            }
         }
-    } catch (e: Exception) {
-        e.printStackTrace()
-        null
     }
 }
 
-fun checkAnswer(
-    selectedAnswer: String,
-    cocktail: Cocktail?,
-    onFeedbackChange: (Boolean, Color) -> Unit
-) {
-    if (selectedAnswer == cocktail?.alcohol) {
-        onFeedbackChange(true, Color.Green)  // Risposta corretta
-    } else {
-        onFeedbackChange(false, Color.Red)  // Risposta sbagliata
+class CocktailViewModel : ViewModel() {
+    var cocktailList: List<Cocktail> = listOf()
+    var favorites = mutableStateListOf<Cocktail>()
+
+
+    fun trovaCocktail(query: String) {
+        viewModelScope.launch {
+            val response = RetrofitClient.instance.searchCocktail(query)
+            cocktailList = response.drink ?: listOf() }
+    }
+
+    fun salvaCocktail(cocktail: Cocktail) {
+        if (!favorites.contains(cocktail)) {
+            favorites.add(cocktail)  // Aggiungi il cocktail ai preferiti
+        }
     }
 }
