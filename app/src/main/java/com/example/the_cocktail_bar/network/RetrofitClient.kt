@@ -6,7 +6,7 @@ import retrofit2.http.Query
 import com.example.the_cocktail_bar.CocktailR
 
 object RetrofitClient {
-    //api principale per usarlo con tutte le altre 
+    //api principale per usarlo con tutte le altre
     private const val BASE_URL = "https://www.thecocktaildb.com/api/json/v1/1/"
 
     val instance: CocktailApiService by lazy {
