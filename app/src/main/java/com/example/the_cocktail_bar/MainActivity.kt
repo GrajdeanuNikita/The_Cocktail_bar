@@ -29,13 +29,14 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.colorResource
 import androidx.lifecycle.ViewModel
 import com.example.the_cocktail_bar.network.RetrofitClient
 import androidx.compose.ui.text.font.FontWeight
 import coil.compose.rememberImagePainter
-
-
+import com.example.the_cocktail_bar.ui.theme.DeepBlueBlack
+import com.example.the_cocktail_bar.ui.theme.MidnightBlue
+import com.example.the_cocktail_bar.ui.theme.OxfordBlue
+import com.example.the_cocktail_bar.ui.theme.Blue300
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,22 +65,42 @@ fun MyApp() {
 fun BarraNavigazione(navController: NavHostController) {
     val items = listOf("home", "ricerca", "preferiti")
     val icons = listOf("🏠", "🔍", "⭐")
-    //Icons.Filled.Star oppure Icons.Outlined.Star
 
-    NavigationBar(containerColor = Color.LightGray) {
+    NavigationBar(
+        containerColor = DeepBlueBlack
+    ) {
         val currentRoute by navController.currentBackStackEntryAsState()
         val selectedRoute = currentRoute?.destination?.route
 
         items.forEachIndexed { index, route ->
             NavigationBarItem(
-                icon = { Text(icons[index], fontSize = 24.sp) },
-                label = { Text(route.capitalize()) },
+                icon = {
+                    Text(
+                        text = icons[index],
+                        fontSize = 24.sp,
+                        color = Color.White
+                    )
+                },
+                label = {
+                    Text(
+                        text = route.capitalize(),
+                        color = Color.White
+                    )
+                },
                 selected = selectedRoute == route,
-                onClick = { navController.navigate(route) }
+                onClick = { navController.navigate(route) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Color.White,
+                    unselectedIconColor = Color.White,
+                    selectedTextColor = Color.White,
+                    unselectedTextColor = Color.White,
+                    indicatorColor = Color.Gray
+                )
             )
         }
     }
 }
+
 
 @Composable
 fun NavigationGraph(navController: NavHostController, viewModel: CocktailViewModel) {
@@ -94,13 +115,12 @@ fun NavigationGraph(navController: NavHostController, viewModel: CocktailViewMod
 @Composable
 fun HomeScreen(navController: NavController) {
 
-    val tertiaryColor = colorResource(id = R.color.md_theme_tertiary_highContrast)
 
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(DeepBlueBlack)
     ) {
         Image(
             painter = painterResource(id = R.drawable.cock_tail),
@@ -121,13 +141,14 @@ fun HomeScreen(navController: NavController) {
                 text = "Cocktail Bar 🍸",
                 fontSize = 30.sp,
                 textAlign = TextAlign.Center,
-                color = Color.White
+                color = Color.White,
+                fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.height(20.dp))
 
             Button(
                 onClick = { navController.navigate("gioco") }) {
-                Text(text = "Gioca", color = Color.Black, fontSize = 20.sp)
+                Text(text = "Gioca", color = OxfordBlue, fontSize = 20.sp)
             }
         }
     }
@@ -141,16 +162,16 @@ fun Gioco(navController: NavController) {
     var isCorrectAnswer by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    // Carica un cocktail casuale
-    LaunchedEffect(true) {
+    // Carica un cocktail casuale inizialmente appena si apre la schermata
+    LaunchedEffect(Unit) {
         val response = RetrofitClient.instance.getRandomCocktail()
         cocktail = response.drink?.first()
     }
 
-    // Lista di alcolici per il gioco
+    // Lista di alcolici casuali per il bottone
     val alcoholOptions = listOf("Vodka", "Rum", "Gin", "Whiskey", "Tequila", "Brandy", "Cognac", "Gin", "Scotch")
 
-    // Rimuovi il feedback dopo 1 secondo
+
     LaunchedEffect(key1 = feedbackColor) {
         if (feedbackColor != Color.Transparent) {
             delay(1000)
@@ -168,61 +189,64 @@ fun Gioco(navController: NavController) {
         }
     }
 
-    // Box principale che contiene il layout
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(DeepBlueBlack)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp), // Padding per evitare che gli elementi tocchino i bordi
+                .padding(16.dp),
             verticalArrangement = Arrangement.Top,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Titolo del gioco
             Text(
                 text = "Gioco di Bevute",
                 fontSize = 30.sp,
+                fontWeight = FontWeight.Bold,
                 color = Color.White,
                 textAlign = TextAlign.Center
             )
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Quando il cocktail è caricato, mostra l'immagine, nome e le opzioni
             cocktail?.let {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    // Mostra l'immagine del cocktail
                     it.imageUrl?.let { url ->
                         Image(painter = rememberImagePainter(url), contentDescription = null)
                     }
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // Mostra il nome del cocktail
                     Text(
                         text = "Cocktail: ${it.name}",
                         fontSize = 24.sp,
                         color = Color.White,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        fontWeight = FontWeight.Bold
                     )
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // Crea le opzioni con ingredienti
+                    // Creazione delle opzioni con ingredienti di una giusta e le altre 4 prese dalla lista di su
                     val options = (alcoholOptions + it.ingredients.orEmpty()).shuffled().take(5)
 
                     options.forEach { option ->
                         Button(
                             onClick = {
                                 selectedAnswer = option
-                                // Controlla se la risposta è corretta
                                 isCorrectAnswer = it.ingredients?.contains(option) == true
                                 feedbackColor = if (isCorrectAnswer) Color.Green else Color.Red
-                                if (isCorrectAnswer) score++ // Aumenta il punteggio se corretto
+                                if (isCorrectAnswer) score++ // Aumenta il punteggio se corretto(poi in caso fare
+                                //dei piccoli eventi quando si arriva a tot punti)
+
                             },
+                            colors= ButtonDefaults.buttonColors(
+                                containerColor= MidnightBlue,
+                                contentColor = Color.White
+                            ),
                             modifier = Modifier
                                 .padding(8.dp)
                                 .background(feedbackColor)
@@ -235,7 +259,6 @@ fun Gioco(navController: NavController) {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Feedback sulla risposta dell'utente
             AnimatedVisibility(visible = feedbackColor != Color.Transparent) {
                 Text(
                     text = if (isCorrectAnswer) "Corretto!" else "Sbagliato!",
@@ -244,7 +267,6 @@ fun Gioco(navController: NavController) {
                 )
             }
 
-            // Mostra il punteggio attuale
             Text(
                 text = "Punteggio: $score",
                 fontSize = 20.sp,
@@ -253,9 +275,9 @@ fun Gioco(navController: NavController) {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Pulsante per cambiare il cocktail
             Button(
                 onClick = { changeCocktail() },
+                colors = ButtonDefaults.buttonColors(containerColor = MidnightBlue),
                 modifier = Modifier.padding(8.dp)
             ) {
                 Text("Cambia Cocktail", color = Color.White, fontSize = 18.sp)
@@ -263,7 +285,7 @@ fun Gioco(navController: NavController) {
 
             Spacer(modifier = Modifier.height(30.dp))
 
-            // Pulsante "Indietro" per tornare alla schermata precedente
+
             Button(
                 onClick = { navController.popBackStack() },
             ) {
@@ -280,7 +302,25 @@ fun Ricerca(viewModel: CocktailViewModel) {
     var searchText by remember { mutableStateOf(TextFieldValue("")) }
     val searchResults by remember { mutableStateOf(viewModel.cocktailList) }
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Blue300)
+            .padding(16.dp),
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Ricerca Cocktail",
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        Spacer(modifier = Modifier.width(15.dp))
         BasicTextField(
             value = searchText,
             onValueChange = { searchText = it },
@@ -305,18 +345,12 @@ fun Ricerca(viewModel: CocktailViewModel) {
 
         searchResults.forEach { cocktail ->
             Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                // Nome del cocktail
                 Text("Nome: ${cocktail.name}", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-
-                // Immagine del cocktail
                 cocktail.imageUrl?.let {
                     Image(painter = rememberImagePainter(it), contentDescription = "Cocktail Image", modifier = Modifier.fillMaxWidth())
                 }
-
-                // Istruzioni
                 Text("Istruzioni: ${cocktail.instructions}", fontSize = 14.sp)
 
-                // Ingredienti
                 cocktail.ingredients?.forEach { ingredient ->
                     Text("Ingrediente: $ingredient", fontSize = 14.sp)
                 }
@@ -344,6 +378,7 @@ fun Preferiti(viewModel: CocktailViewModel) {
     }
 }
 
+//gestione degli api di random e ricerca
 class CocktailViewModel : ViewModel() {
     var cocktailList: List<Cocktail> = listOf()
     var favorites = mutableStateListOf<Cocktail>()
@@ -357,7 +392,7 @@ class CocktailViewModel : ViewModel() {
 
     fun salvaCocktail(cocktail: Cocktail) {
         if (!favorites.contains(cocktail)) {
-            favorites.add(cocktail)  // Aggiungi il cocktail ai preferiti
+            favorites.add(cocktail)
         }
     }
 }

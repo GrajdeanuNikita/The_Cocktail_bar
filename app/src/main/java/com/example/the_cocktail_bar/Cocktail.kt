@@ -8,7 +8,6 @@ data class CocktailR(
 
 data class Cocktail(
     val name: String,
-    val category: String,
     val imageUrl: String?,
     val instructions: String,
     val ingredients: List<String>?
@@ -24,7 +23,6 @@ data class Cocktail(
             }
             return Cocktail(
                 name = json.getString("strDrink"),
-                category = json.optString("strCategory", "Unknown"),
                 instructions = json.optString("strInstructions", "No instructions"),
                 imageUrl = json.optString("strDrinkThumb", null),
                 ingredients = ingredients
